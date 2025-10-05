@@ -6,7 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 @RestController
@@ -24,6 +24,50 @@ public class MatrixController {
         String id = store.create(matrix.copy()); // always store a copy for safety
         return ResponseEntity.created(URI.create("/api/v1/" + id)).body(id);
     }
+
+    @GetMapping("/generate")
+    public ResponseEntity<?> generateMatrix(
+            @RequestParam int size,
+            @RequestParam(defaultValue = "identity") String type,
+            @RequestParam(defaultValue = "false") boolean store) {
+
+        // 1️⃣ Validate and convert type
+        Matrix.Type matrixType;
+        try {
+            matrixType = Matrix.Type.valueOf(type.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            String errorMsg = "Invalid matrix type '" + type + "'. Allowed values: identity, zero.";
+            return ResponseEntity.badRequest().body(Collections.singletonMap("error", errorMsg));
+        }
+
+        // 2️⃣ Create matrix (type is guaranteed valid)
+        Matrix matrix;
+        switch (matrixType) {
+            case IDENTITY:
+                matrix = Matrix.identityMatrix(size);
+                break;
+            case ZERO:
+                matrix = Matrix.zeroMatrix(size);
+                break;
+            default:
+                // Should never happen
+                return ResponseEntity.badRequest()
+                        .body(Collections.singletonMap("error", "Unknown matrix type."));
+        }
+
+        // 3️⃣ Store if requested
+        if (store) {
+            String id = this.store.create(matrix.copy()); // defensive copy
+            return ResponseEntity.ok()
+                    .header("X-Matrix-ID", id)
+                    .body(matrix);
+        }
+
+        // 4️⃣ Return matrix directly
+        return ResponseEntity.ok(matrix);
+    }
+
+
 
     @GetMapping("/get/{id}")
     public ResponseEntity<Matrix> get(@PathVariable String id) {
@@ -50,16 +94,5 @@ public class MatrixController {
     public ResponseEntity<Void> replace(@PathVariable String id, @RequestBody Matrix matrix) {
         boolean updated = store.update(id, matrix);
         return updated ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
-    }
-
-    @GetMapping("/identity/{dimension}")
-    public Matrix getIdentityMatrix(@PathVariable int dimension) {
-        return Matrix.identityMatrix(dimension);
-    }
-
-
-    @GetMapping()
-    public String test() {
-        return "Hello World !";
     }
 }

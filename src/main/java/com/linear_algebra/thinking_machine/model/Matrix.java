@@ -3,12 +3,11 @@ package com.linear_algebra.thinking_machine.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 
-enum Type {IDENTITY, ZERO};
+
 
 @Getter
 public class Matrix {
-
-
+    public enum Type {IDENTITY, ZERO};
 
     private int[][] matrix;
 
